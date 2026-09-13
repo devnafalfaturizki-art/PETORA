@@ -1,6 +1,9 @@
-# Technical Architecture Contract — Baseline Final
+# Technical Architecture Contract — Baseline Contract
 ## Petora — Sistem Manajemen Terpadu Petshop & Petcare
-### Dokumen Baseline Final | 13 September 2026
+### Dokumen Baseline Contract | 13 September 2026
+
+**Status:** Normative technical contract. Berlaku bersama `docs/00-baseline-governance.md`.
+**Catatan:** Isi dokumen ini adalah target kontrak teknis; keberadaan dokumentasi tidak berarti implementasi sudah tersedia atau production-ready.
 
 ---
 
@@ -31,7 +34,7 @@
 
 ## 1. Ringkasan Eksekutif
 
-Dokumen ini mendefinisikan kontrak arsitektur teknis baseline final untuk seluruh sistem Petora — sistem manajemen terpadu Petshop & Petcare berbasis **SolidJS + Vite + TypeScript + Supabase** yang di-deploy ke **Vercel**.
+Dokumen ini mendefinisikan kontrak arsitektur teknis baseline untuk seluruh sistem Petora — sistem manajemen terpadu Petshop & Petcare berbasis **SolidJS + Vite + TypeScript + Supabase** yang di-deploy ke **Vercel**.
 
 Dokumen ini menjadi acuan tunggal bagi developer dan AI agent untuk:
 
@@ -118,8 +121,8 @@ Dokumen ini menjadi acuan tunggal bagi developer dan AI agent untuk:
 │                    External Services                             │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
 │  │ WhatsApp     │  │ Payment      │  │ Email                │  │
-│  │ Gateway      │  │ Gateway      │  │ Service              │  │
-│  │ (Fonnte)     │  │ (Midtrans)   │  │ (Resend)             │  │
+│  │ Adapter      │  │ Adapter      │  │ Adapter              │  │
+│  │ (selected)   │  │ (selected)   │  │ (selected)           │  │
 │  └──────────────┘  └──────────────┘  └──────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -244,6 +247,8 @@ User Action
 | Trigger | `trg_<table>_<action>` | `trg_users_before_insert` |
 
 ### 3.2 Complete Schema
+
+> **Migration rule:** blok SQL di bawah adalah logical schema contract, bukan satu file migration yang boleh dijalankan mentah. Implementasi wajib memecahnya menjadi migration berurutan sesuai dependency foreign key (misalnya `customers` sebelum `users`), menambahkan `updated_at` trigger, RLS, dan rollback/recovery plan. Fresh database migration test adalah release gate.
 
 ```sql
 -- ============================================
@@ -3206,7 +3211,7 @@ petora/
 ├── src/
 │   ├── app.tsx                    # Root component
 │   ├── index.tsx                  # Entry point
-│   ├── routes/                    # File-based routing (SolidStart) atau manual
+│   ├── routes/                    # Routing manual via @solidjs/router
 │   │   ├── index.tsx              # Landing / redirect
 │   │   ├── login.tsx              # Login page
 │   │   ├── app/                   # Staff dashboard
@@ -3667,9 +3672,9 @@ serve(async (req) => {
 | Function | Trigger | Purpose |
 |----------|---------|---------|
 | `auth-login` | HTTP | Login dengan PIN |
-| `send-whatsapp` | HTTP / Internal | Kirim notifikasi WhatsApp via Fonnte |
-| `send-email` | HTTP / Internal | Kirim email via Resend |
-| `payment-callback` | HTTP | Handle callback dari Midtrans/Xendit |
+| `send-whatsapp` | HTTP / Internal | Kirim notifikasi melalui provider adapter yang disetujui |
+| `send-email` | HTTP / Internal | Kirim email melalui provider adapter yang disetujui |
+| `payment-callback` | HTTP | Handle callback dari provider payment yang disetujui |
 | `scheduled-jobs` | Cron | Reminder vaksin, appointment, feedback request |
 
 ---
@@ -3836,4 +3841,4 @@ export async function deleteFile(bucket: StorageBucket, path: string): Promise<v
 
 ---
 
-**Dokumen ini merupakan baseline final arsitektur teknis Petora berbasis SolidJS. Seluruh developer dan AI agent wajib mengikuti kontrak yang didefinisikan di sini untuk memastikan konsistensi, keamanan, performa, dan maintainability sistem.** 🚀
+**Dokumen ini merupakan technical baseline Petora berbasis SolidJS. Seluruh developer dan AI agent wajib mengikuti kontrak governance, decision register, dan release gate untuk memastikan konsistensi, keamanan, performa, dan maintainability sistem.**

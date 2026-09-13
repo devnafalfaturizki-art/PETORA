@@ -1,6 +1,9 @@
 # Technical Specification — Baseline Contract & Workflow
 ## Petora — Sistem Manajemen Terpadu Petshop & Petcare
-### Dokumen Baseline Final | 13 September 2026
+### Dokumen Baseline Contract | 13 September 2026
+
+**Status:** Normative module and workflow contract. Berlaku bersama `docs/00-baseline-governance.md`.
+**Catatan:** Setiap workflow wajib memiliki implementasi, permission enforcement, audit event, dan test sebelum dianggap selesai.
 
 ---
 
@@ -52,7 +55,7 @@ Dokumen ini mendefinisikan **kontrak teknis + workflow detail** untuk setiap mod
 | Layer | Technology |
 |-------|-----------|
 | Frontend Framework | **SolidJS** (bukan React) |
-| Meta Framework | Vite + Solid (SPA) atau SolidStart (SSR untuk Portal) |
+| Meta Framework | Vite + Solid SPA untuk MVP; SolidStart SSR tidak aktif tanpa decision register approval |
 | UI Components | shadcn-solid atau Kobalte + Tailwind |
 | Data Fetching | `@tanstack/solid-query` (`createQuery`, `createMutation`) |
 | State Management | SolidJS native (`createSignal`, `createStore`) |
@@ -1447,7 +1450,7 @@ Step 8: Return invoice
 **Edge Cases:**
 - Invoice yang sudah PAID dan ada pembayaran cash → refund manual di luar sistem (catat di notes)
 - Invoice dengan item PET_HOTEL yang sudah CHECKED_OUT → tetap bisa cancel, tapi pet hotel booking tidak otomatis berubah status
-- Partial payment yang sudah diterima → refund logic perlu kebijakan bisnis (TBD)
+- Partial payment yang sudah diterima → refund logic mengikuti `DEC-OPEN-003`; release diblokir sampai policy disetujui.
 
 ### 8.6 Workflow: Cash Shift
 
@@ -1962,7 +1965,7 @@ Step 3: Click "Pay Now"
 
 Step 4: Select payment method (QRIS/E-Wallet/Transfer)
 
-Step 5: Redirect to payment gateway (Midtrans/Xendit)
+Step 5: Redirect to payment gateway yang dipilih melalui `DEC-OPEN-008`
 
 Step 6: Payment gateway callback → update invoice status
 
@@ -2308,44 +2311,14 @@ export enum ErrorCode {
 
 ---
 
-## Ringkasan Eksekutif
+## Canonical reference
 
-### Cakupan Dokumen
+Workflow scope, implementation rules, testing, dan release gate dirujuk dari dokumen canonical repository. Tidak ada ringkasan implementasi kedua di bagian akhir dokumen ini.
 
-✅ **Auth & User Management** — login, create user, reset PIN, change PIN, RLS policies
-✅ **CRM & Pasien** — customers, pets, appointments, medical records, pet hotel, grooming
-✅ **Petshop** — products, inventory, purchase orders
-✅ **POS & Billing** — invoice creation, payment, cancellation, cash shifts
-✅ **Engagement & Loyalty** — earn/redeem points, tier upgrade, promotions, feedback
-✅ **Keuangan & Operasional** — expenses, reports, settings
-✅ **Customer Portal** — self-service workflows
-✅ **Cross-Cutting** — number generation, audit logging, notifications, realtime, storage
-✅ **Edge Cases** — comprehensive error matrix & concurrency handling
+### Implementation reference
 
-### Prinsip Implementasi
-
-1. **Contract-first** — Implementasi harus mengikuti kontrak yang didefinisikan di sini
-2. **Fail-fast** — Validasi di setiap layer (Zod → Service → DB)
-3. **Atomic operations** — Multi-table operations harus dalam transaction
-4. **Audit everything** — Setiap perubahan state tercatat
-5. **Explicit state transitions** — Tidak boleh melompat state
-6. **Type-safe** — TypeScript strict mode + Zod runtime validation
-7. **SolidJS native** — Menggunakan `createSignal`, `createStore`, `createQuery`, `createMutation`
-
-### Checklist Implementasi per Modul
-
-Sebelum menyelesaikan setiap modul, developer **WAJIB** memastikan:
-
-- [ ] Semua workflow diimplementasikan sesuai spesifikasi
-- [ ] Semua edge cases ditangani
-- [ ] Error codes sesuai matrix
-- [ ] State transitions mengikuti state machine
-- [ ] Audit logging di setiap operasi
-- [ ] RLS policies di-test
-- [ ] Unit tests untuk business rules (≥80% coverage)
-- [ ] Integration tests untuk workflows
-- [ ] E2E tests untuk critical paths
+Implementasi, testing, dan release gate mengikuti [Baseline Governance](00-baseline-governance.md), [Technical Architecture Contract](02-technical-architecture-contract.md), dan [Production Readiness Checklist](05-production-readiness-checklist.md).
 
 ---
 
-**Dokumen ini merupakan baseline final untuk implementasi Petora. Seluruh developer dan AI agent wajib mengikuti kontrak yang didefinisikan di sini untuk memastikan konsistensi, keamanan, dan maintainability sistem.** 🚀
+**Dokumen ini merupakan module and workflow baseline Petora. Setiap workflow wajib mengikuti governance, technical contract, decision register, dan release gate sebelum dianggap selesai.**

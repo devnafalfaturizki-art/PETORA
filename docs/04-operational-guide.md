@@ -1,6 +1,9 @@
 # 📘 PANDUAN OPERASIONAL LENGKAP: PETORA
 **Sistem Manajemen Terpadu Petshop & Petcare**
 
+**Status:** Informational operator guide. Dokumen ini tidak dapat mengubah product, technical, atau module contract.
+**Rujukan normatif:** Mulai dari `../README.md` dan `00-baseline-governance.md`.
+
 ---
 
 ## 🌟 1. Pengantar & Visi PETORA

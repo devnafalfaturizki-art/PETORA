@@ -6,9 +6,12 @@
 ## 1. Preamble & Tujuan
 
 Dokumen ini adalah **konstitusi pengembangan** untuk sistem Petora. Setiap AI agent dan developer **WAJIB** mengikuti aturan di sini tanpa pengecualian. Dokumen ini melengkapi:
-- `PRD Baseline Contract Final.md` — spesifikasi fitur & workflow
-- `master-spesifikasii-modul.md` — detail teknis per modul
-- `master-arsitektur.md` — kontrak arsitektur teknis
+- `docs/00-baseline-governance.md` — sumber kebenaran, precedence, status, dan change control
+- `docs/01-product-baseline.md` — spesifikasi produk dan feature requirements
+- `docs/02-technical-architecture-contract.md` — kontrak arsitektur teknis
+- `docs/03-module-workflows-contract.md` — detail workflow dan business rules per modul
+
+Jika aturan di dokumen ini dan baseline governance tampak bertentangan, hentikan implementasi dan catat keputusan di `docs/06-decision-register.md` sebelum melanjutkan.
 
 **Tujuan utama:**
 1. Menghilangkan ambiguitas dalam implementasi
