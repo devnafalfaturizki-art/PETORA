@@ -1,11 +1,12 @@
 # Production Readiness Checklist
+
 ## Petora | Release Gate
 
-Checklist ini adalah gate, bukan daftar aspirasi. Item yang tidak relevan harus diberi alasan tertulis; item kosong berarti release belum siap.
+Checklist ini adalah gate untuk setiap release train, baik initial release maupun release lanjutan. Ini bukan daftar aspirasi. Item yang tidak relevan harus diberi alasan tertulis; item kosong berarti release belum siap.
 
 ## 1. Product dan scope
 
-- [ ] Semua requirement MVP memiliki ID, acceptance criteria, owner, dan test.
+- [ ] Semua requirement pada target release memiliki ID, acceptance criteria, owner, dan test.
 - [ ] Semua `OPEN` decision berdampak rendah atau sudah disetujui untuk ditunda.
 - [ ] Role, permission, tenant/business boundary, dan data visibility sudah disetujui.
 - [ ] State machine tidak memiliki transisi tersirat atau lompatan status.

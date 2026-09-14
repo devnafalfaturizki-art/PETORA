@@ -1,4 +1,5 @@
 # Requirement Traceability Matrix
+
 ## Petora | Requirement -> Delivery Evidence
 
 **Status:** Normative delivery artifact
@@ -28,6 +29,15 @@ Satu baris mewakili satu capability yang dapat dirilis. Kolom `Contract source` 
 | `PORTAL-001` | Customer self-service booking/invoice view | Product 4.11; Workflow 11 | Customer own data only | RLS customer boundary | RLS matrix, E2E, privacy review | `BLOCKED` by `DEC-OPEN-002` |
 | `PLATFORM-001` | Audit log and observability | Governance 4; Architecture audit sections | System/admin | Immutable enough for investigation | audit completeness test, alert smoke test | `PLANNED` |
 | `PLATFORM-002` | Database migration and recovery | Governance 5; Architecture 17 | Deployment identity | Fresh DB and upgrade path | CI migration test, restore drill | `BLOCKED` by `DEC-OPEN-006` |
+| `PLATFORM-003` | Multi-business and branch isolation | Product full-product target; Roadmap Phase 7 | Tenant/branch membership | Every tenant-scoped entity and query | adversarial RLS, migration, export, cross-branch report | `BLOCKED` by `DEC-OPEN-002` |
+| `POS-003` | Offline queue and reconciliation | Product full-product target; Roadmap Phase 8 | Authorized device and operation allowlist | Replay must be idempotent and auditable | reconnect drill, conflict, settlement, device recovery | `BLOCKED` by `DEC-OPEN-005` |
+| `COMMERCE-001` | Retail order, fulfillment, return, refund | Product full-product target; Roadmap Phase 8 | Customer/order/stock boundary | Reservation, fulfillment, and refund ledger | integration, inventory, payment, E2E | `BLOCKED` by `DEC-OPEN-003` |
+| `SERVICE-001` | Membership, recurring service, subscription | Product full-product target; Roadmap Phase 9 | Customer consent and billing lifecycle | Pause/cancel/renew transitions | lifecycle, billing, notification, E2E | `PLANNED` |
+| `INTEGRATION-001` | Provider adapters and webhook platform | Product full-product target; Roadmap Phase 9 | Provider credential and webhook boundary | Signature, idempotency, reconciliation | sandbox/live, duplicate callback, outage drill | `BLOCKED` by `DEC-OPEN-008` |
+| `ANALYTICS-001` | Metric catalog and auditable reporting | Product full-product target; Roadmap Phase 10 | Role and tenant report scope | Metric definition and freshness | ledger reconciliation, freshness, access test | `PLANNED` |
+| `RESILIENCE-001` | SLO, DR, failover, incident operations | Product full-product target; Roadmap Phase 11 | Operational control plane | RTO/RPO and restore evidence | load, outage, restore, alert test | `PLANNED` |
+| `LIFECYCLE-001` | API/schema versioning and deprecation | Product full-product target; Roadmap Phase 11 | Consumer compatibility | Migration path before removal | compatibility, migration, deprecation test | `PLANNED` |
+| `GOV-001` | Continuous product delivery and evidence review | Product full-product target; Roadmap Phase 12 | Release governance | No undocumented contract drift | release review, decision, traceability audit | `PLANNED` |
 
 ## 2. Evidence rules
 

@@ -1,5 +1,7 @@
 # Technical Architecture Contract — Baseline Contract
+
 ## Petora — Sistem Manajemen Terpadu Petshop & Petcare
+
 ### Dokumen Baseline Contract | 13 September 2026
 
 **Status:** Normative technical contract. Berlaku bersama `docs/00-baseline-governance.md`.
@@ -29,6 +31,7 @@
 18. [Supabase Edge Functions](#18-supabase-edge-functions)
 19. [Realtime Subscriptions](#19-realtime-subscriptions)
 20. [Storage & File Upload](#20-storage--file-upload)
+21. [Operational Deployment Contract](#21-operational-deployment-contract)
 
 ---
 
@@ -78,7 +81,7 @@ Dokumen ini menjadi acuan tunggal bagi developer dan AI agent untuk:
 
 ### 2.1 Arsitektur High-Level
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Client Layer                             │
 │  ┌──────────────────────────────────────────────────────────┐  │
@@ -129,7 +132,7 @@ Dokumen ini menjadi acuan tunggal bagi developer dan AI agent untuk:
 
 ### 2.2 Layer Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────┐
 │ Layer 1: Presentation (SolidJS Components)                      │
 │ - UI Components (shadcn-solid / Kobalte + Tailwind)             │
@@ -179,7 +182,7 @@ Dokumen ini menjadi acuan tunggal bagi developer dan AI agent untuk:
 
 ### 2.3 Data Flow
 
-```
+```text
 User Action
      │
      ▼
@@ -3203,7 +3206,8 @@ export const AppErrorBoundary: Component<Props> = (props) => {
 
 ## 13. File Structure Contracts
 
-```
+```text
+
 petora/
 ├── public/
 │   ├── favicon.ico
@@ -3418,6 +3422,7 @@ petora/
 ├── AGENTS.md
 ├── PRD.md
 └── README.md
+
 ```
 
 ---
@@ -3427,11 +3432,11 @@ petora/
 ### 14.1 Frontend (Vercel)
 
 ```bash
-# .env.example
+# .env.example (non-secret names and safe defaults only)
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 VITE_ENABLE_WHATSAPP_NOTIFICATIONS=false
-VITE_PAYMENT_GATEWAY=midtrans
+VITE_ENABLE_PAYMENT_GATEWAY=false
 ```
 
 ### 14.2 Backend (Supabase Edge Functions)
@@ -3440,11 +3445,13 @@ VITE_PAYMENT_GATEWAY=midtrans
 # Supabase Secrets
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-FONNTE_API_KEY=your-fonnte-key
-RESEND_API_KEY=your-resend-key
-MIDTRANS_SERVER_KEY=your-midtrans-key
-MIDTRANS_CLIENT_KEY=your-midtrans-client-key
-JWT_SECRET=your-jwt-secret
+PAYMENT_PROVIDER=approved-provider-name
+PAYMENT_SERVER_SECRET=configure-in-secret-manager
+PAYMENT_WEBHOOK_SECRET=configure-in-secret-manager
+MESSAGING_PROVIDER=approved-provider-name
+MESSAGING_API_SECRET=configure-in-secret-manager
+EMAIL_PROVIDER=approved-provider-name
+EMAIL_API_SECRET=configure-in-secret-manager
 ```
 
 ### 14.3 Rules
@@ -3539,9 +3546,10 @@ npx supabase db push
 
 ```sql
 -- supabase/seed.sql
--- Owner account (PIN: 123456)
-INSERT INTO users (username, pin_hash, role, full_name)
-VALUES ('owner', '$2b$12$...', 'OWNER', 'System Owner');
+-- Do not seed a static owner credential or PIN.
+-- Create the first owner through a one-time, audited bootstrap command in a
+-- protected environment. The command must validate input, hash the PIN, and
+-- revoke itself after successful bootstrap.
 
 -- Loyalty tiers
 INSERT INTO loyalty_tiers (tier_name, min_points, min_spending, point_multiplier, benefits)
@@ -3571,22 +3579,32 @@ INSERT INTO settings (key, value) VALUES
 
 ### 18.1 Auth Login
 
+**Status:** Blocked until `DEC-OPEN-001` is approved. This code block is a contract illustration, not deployable authentication code. Production implementation MUST use one canonical identity/session model, Zod input validation, rate limiting, token revocation, audit transaction, and the approved `auth.uid()` mapping. The custom PIN flow MUST NOT pass a PIN as a Supabase password unless that design is explicitly approved and tested.
+
 ```typescript
 // supabase/functions/auth-login/index.ts
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { compare } from 'https://deno.land/x/bcrypt/mod.ts';
+import { z } from 'https://esm.sh/zod@3';
+
+const loginCredentialsSchema = z.object({
+  username: z.string().min(3).max(50).regex(/^[a-z0-9._]+$/),
+  pin: z.string().length(6).regex(/^\d+$/),
+});
 
 serve(async (req) => {
-  const { username, pin } = await req.json();
+  const rawBody: unknown = await req.json();
+  const parsed = loginCredentialsSchema.safeParse(rawBody);
 
-  // Validate
-  if (!username || !pin || pin.length !== 6) {
+  if (!parsed.success) {
     return new Response(JSON.stringify({
       success: false,
       error: { code: 'BAD_REQUEST', message: 'Invalid input' }
     }), { status: 400 });
   }
+
+  const { username, pin } = parsed.data;
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -3762,6 +3780,7 @@ export type StorageBucket =
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const PUBLIC_BUCKETS: ReadonlySet<StorageBucket> = new Set(['products', 'pets']);
 
 export async function uploadFile(
   bucket: StorageBucket,
@@ -3790,11 +3809,22 @@ export async function uploadFile(
     throw new AppError(ErrorCode.INTERNAL_ERROR, `Upload failed: ${error.message}`);
   }
 
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(data.path);
+  if (PUBLIC_BUCKETS.has(bucket)) {
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucket)
+      .getPublicUrl(data.path);
+    return publicUrl;
+  }
 
-  return publicUrl;
+  const { data: signed, error: signedUrlError } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(data.path, 3600);
+
+  if (signedUrlError || !signed?.signedUrl) {
+    throw new AppError(ErrorCode.INTERNAL_ERROR, 'Signed URL generation failed');
+  }
+
+  return signed.signedUrl;
 }
 
 export async function deleteFile(bucket: StorageBucket, path: string): Promise<void> {
@@ -3816,6 +3846,64 @@ export async function deleteFile(bucket: StorageBucket, path: string): Promise<v
 | `customers` | No | 2MB | jpg, png |
 | `pets` | Yes | 2MB | jpg, png |
 | `expenses` | No | 5MB | jpg, png, pdf |
+
+---
+
+## 21. Operational Deployment Contract
+
+### 21.1 Environment model
+
+| Environment | Data | External providers | Deployment rule |
+|---|---|---|---|
+| Local | Disposable local Supabase | Mock/sandbox only | Migration and test development |
+| CI | Ephemeral isolated database | Mock/sandbox | Required checks on every PR |
+| Staging | Sanitized non-production data | Sandbox | Production-like rehearsal |
+| Production | Real customer and financial data | Approved live providers | Manual approval and release record |
+
+Environment values are never copied between environments. Secrets live only in the environment secret manager. `.env.example` documents names and safe defaults, never real values.
+
+### 21.2 Promotion sequence
+
+1. Build an immutable artifact from a reviewed commit.
+2. Run typecheck, lint, unit, integration, E2E, migration, RLS, dependency, secret, and security checks.
+3. Apply database migrations to staging and run smoke plus upgrade tests.
+4. Verify provider sandbox callbacks, scheduled jobs, storage policies, audit events, and dashboards.
+5. Create a release record containing commit, migration list, schema checksum, evidence, owner, rollback version, and open risk waivers.
+6. Deploy frontend and backend in compatibility order: additive schema, backend, frontend, cleanup migration only after adoption.
+7. Run production smoke tests with non-destructive accounts and verify health, error rate, queue, audit, and payment reconciliation.
+8. Announce release and monitor the defined observation window before closing the release.
+
+### 21.3 Health and observability contract
+
+Every deployable component MUST expose or emit:
+
+- liveness and readiness checks;
+- version, commit, environment, and migration version;
+- structured logs with correlation ID and actor ID where allowed;
+- metrics for request rate, latency, error rate, queue lag, database errors, RLS denial, payment callback, stock conflict, and notification failure;
+- traces for authentication, booking, checkout, payment, webhook, migration, and scheduled jobs;
+- alerts with severity, owner, runbook link, and escalation path.
+
+Logs MUST NOT contain PIN, token, secret, full payment credential, or unnecessary medical data.
+
+### 21.4 Rollback and recovery
+
+- Application rollback MUST be tested independently from database rollback.
+- Destructive database changes require expand-migrate-contract sequencing; direct destructive rollback is forbidden without verified backup and recovery procedure.
+- Payment, stock, loyalty, invoice, and booking operations use compensating transactions rather than deleting history.
+- A failed migration stops promotion and preserves evidence; it is never hidden by manual edits in production.
+- Rollback decision is owned by the incident commander and technical owner; financial reconciliation is owned by finance/Owner.
+
+### 21.5 Backup and disaster recovery
+
+- Automated database backup, point-in-time recovery, storage backup, and audit retention MUST be configured.
+- Restore drills MUST run on a defined cadence and record actual RTO/RPO.
+- Recovery MUST verify schema version, RLS, storage access, scheduled jobs, sequence counters, audit continuity, and payment reconciliation.
+- Business continuity MUST define read-only mode, service outage message, manual transaction procedure, and reconciliation after recovery.
+
+### 21.6 Release acceptance
+
+A production deployment is accepted only when [Production Readiness Checklist](05-production-readiness-checklist.md) is complete, [Requirement Traceability Matrix](07-requirement-traceability.md) contains evidence for the target release, and the release record is approved by Product Owner and Technical Owner.
 
 ---
 

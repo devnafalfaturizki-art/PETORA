@@ -1,14 +1,15 @@
 # Implementation Roadmap
+
 ## Petora | Urutan Kerja dari Baseline ke Deployment
 
-Roadmap ini mengatur dependency pekerjaan. Setiap fase memiliki exit gate; fase berikutnya tidak boleh dimulai dengan mengabaikan blocker fase sebelumnya.
+Roadmap ini mengatur dependency pekerjaan dari contract freeze sampai lifecycle produk jangka panjang. Initial release adalah milestone pertama; fase berikutnya membangun full product target dan tidak boleh mengabaikan blocker fase sebelumnya.
 
 ## Phase 0 - Contract freeze
 
 **Tujuan:** mengubah draft menjadi keputusan yang dapat diimplementasikan.
 
 - Tutup `DEC-OPEN-001` sampai `DEC-OPEN-006` sesuai owner dan evidence.
-- Putuskan MVP single-business atau multi-tenant.
+- Putuskan apakah initial release single-business atau multi-tenant.
 - Bekukan auth/session model, money/refund policy, staffing model, dan offline policy.
 - Tetapkan requirement ID pada [Requirement Traceability Matrix](07-requirement-traceability.md).
 
@@ -84,6 +85,73 @@ Roadmap ini mengatur dependency pekerjaan. Setiap fase memiliki exit gate; fase 
 - Tag release hanya setelah sign-off.
 
 **Exit gate:** release status `READY`, evidence tersimpan, monitoring dan incident owner aktif.
+
+## Phase 7 - Multi-business and scale foundation
+
+**Tujuan:** menjadikan business boundary siap untuk cabang, tenant, dan pertumbuhan data.
+
+- Finalisasi `business_id`/tenant model, branch hierarchy, membership, dan cross-tenant isolation.
+- Migrasikan unique key, foreign key, query, RLS, audit, storage path, notification, dan report ke boundary baru.
+- Tambahkan branch settings, timezone, business calendar, pricing scope, dan permission delegation.
+- Uji tenant isolation, cross-branch reporting, migration compatibility, load, dan data export.
+
+**Exit gate:** tenant/branch isolation lulus adversarial RLS test, data migration dapat diulang, dan report lintas branch terverifikasi.
+
+## Phase 8 - Resilient POS and commerce expansion
+
+**Tujuan:** mendukung operasi dengan koneksi tidak stabil dan alur retail yang lebih lengkap.
+
+- Implementasikan offline queue yang dibatasi pada operasi yang aman untuk offline.
+- Tambahkan idempotency key, conflict resolution, device recovery, reconciliation, dan offline audit trail.
+- Bangun catalog, pickup/delivery, order tracking, return, refund, partial fulfillment, dan stock reservation.
+- Uji payment restriction, duplicate settlement, queue replay, clock skew, dan recovery setelah device loss.
+
+**Exit gate:** offline/reconnect drill dan financial reconciliation lulus tanpa negative stock atau duplicate settlement.
+
+## Phase 9 - Service, membership, and automation expansion
+
+**Tujuan:** memperluas recurring care dan otomatisasi operasional.
+
+- Tambahkan service package, membership, recurring appointment, subscription, reminder policy, dan cancellation window.
+- Tambahkan capacity planning untuk doctor, groomer, room, equipment, dan holiday calendar.
+- Tambahkan notification preference, consent, template versioning, retry policy, dan customer communication history.
+- Uji pause/cancel/renew, missed appointment, timezone, consent withdrawal, dan notification failure.
+
+**Exit gate:** lifecycle billing dan service tidak menghasilkan orphan booking, charge ganda, atau notification tanpa consent.
+
+## Phase 10 - Intelligence and reporting platform
+
+**Tujuan:** mengubah data operasional menjadi insight yang konsisten dan dapat diaudit.
+
+- Definisikan metric catalog untuk revenue, margin, retention, utilization, inventory, SLA, dan service outcome.
+- Bangun reporting read model, export, scheduled report, dashboard role-based, dan data freshness indicator.
+- Tambahkan forecasting atau recommendation hanya setelah kualitas data dan explainability criteria ditetapkan.
+- Uji reconciliation report terhadap ledger, timezone/currency, late-arriving data, dan access boundary.
+
+**Exit gate:** setiap metric memiliki definisi, owner, query contract, freshness target, dan rekonsiliasi dengan source of truth.
+
+## Phase 11 - Platform resilience and lifecycle
+
+**Tujuan:** memastikan Petora dapat dipelihara dan dioperasikan dalam jangka panjang.
+
+- Tetapkan SLO/SLA, capacity limit, alert threshold, incident severity, on-call, dan customer communication.
+- Jalankan disaster recovery, region/provider outage, backup retention, restore, and failover rehearsal.
+- Versioning API/schema, backward compatibility, feature flag cleanup, deprecation window, dan migration tooling.
+- Tetapkan data retention, legal hold, subject access/deletion workflow, audit retention, dan security review cadence.
+- Review accessibility, performance budget, dependency upgrade, threat model, dan support runbook setiap release train.
+
+**Exit gate:** recovery objectives terukur, deprecation memiliki migration path, dan support owner menerima runbook.
+
+## Phase 12 - Continuous product delivery
+
+**Tujuan:** menjaga seluruh product target tetap sehat setelah scale.
+
+- Kelola release train berbasis evidence, customer feedback, defect trend, cost, performance, dan risk.
+- Setiap capability baru masuk traceability matrix sebelum discovery berubah menjadi implementation.
+- Setiap perubahan kontrak memiliki decision record, compatibility note, test update, dan observability update.
+- Tinjau target product secara periodik tanpa menghapus histori keputusan atau mengubah data secara diam-diam.
+
+**Exit gate:** release review menyatakan product health, operational health, security health, dan documentation health memenuhi target.
 
 ## Aturan penghentian
 

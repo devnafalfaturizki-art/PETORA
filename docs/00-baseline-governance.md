@@ -1,4 +1,5 @@
 # Baseline Governance Contract
+
 ## Petora | Sumber Kebenaran dan Aturan Perubahan
 
 **Status:** Normative
@@ -53,8 +54,9 @@ Salinan penuh dari section canonical dilarang. Bila konteks diperlukan, tulis ri
 | `MUST NOT` / `DILARANG` | Larangan normatif | Pelanggaran memblokir merge/release |
 | `SHOULD` | Default yang direkomendasikan | Penyimpangan wajib punya alasan tertulis |
 | `MAY` | Pilihan yang diizinkan | Tidak boleh diasumsikan tersedia |
-| `MVP` | Wajib untuk release pertama | Harus memiliki acceptance criteria |
-| `Future` / `Planned` | Belum termasuk release saat ini | Tidak boleh dibuat seolah-olah aktif |
+| `Initial release` | Wajib untuk milestone operasional pertama | Harus memiliki acceptance criteria dan bukan akhir product roadmap |
+| `Target track` | Bagian dari keseluruhan product target pada release berikutnya | Harus memiliki owner, dependency, dan release gate |
+| `Future` / `Planned` | Belum memiliki release commitment | Tidak boleh dibuat seolah-olah aktif |
 | `Optional` | Hanya aktif jika dikonfigurasi | Config, fallback, dan test wajib jelas |
 | `OPEN` | Keputusan belum ditetapkan | Memblokir release bila menyentuh risiko tinggi |
 | `DEPRECATED` | Tidak boleh dipakai untuk fitur baru | Migrasi dan tanggal penghapusan wajib dicatat |
@@ -111,3 +113,15 @@ ID requirement harus stabil, misalnya `AUTH-001`, `POS-014`, atau `HOTEL-007`. J
 ## 8. Definition of release
 
 Release hanya boleh diberi status `READY` bila tidak ada `OPEN` high-risk decision, critical/high vulnerability, failing test, migration drift, unresolved RLS finding, atau missing rollback plan. Status `READY` harus ditandatangani oleh Product Owner dan technical owner.
+
+## 9. Definition of complete product
+
+Petora baru boleh disebut mencapai target produk lengkap bila:
+
+- seluruh capability `Core operations` dan target track yang telah disetujui memiliki status `DONE`, atau memiliki keputusan `DEPRECATED` dengan migration path dan alasan yang disetujui;
+- tidak ada capability yang diam-diam dihapus hanya karena belum masuk initial release;
+- seluruh tenant, security, financial, data retention, accessibility, performance, observability, recovery, support, dan deprecation gate telah memiliki evidence;
+- setiap release train memperbarui [Requirement Traceability Matrix](07-requirement-traceability.md) dan [Decision Register](06-decision-register.md);
+- perubahan kontrak lintas versi dapat dimigrasikan, dipantau, dan dipulihkan tanpa kehilangan histori transaksi atau audit.
+
+Initial release, production-ready release, dan complete product adalah tiga status berbeda. Lulus initial release tidak otomatis berarti target produk lengkap.

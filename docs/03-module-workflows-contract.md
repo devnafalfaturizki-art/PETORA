@@ -1,5 +1,7 @@
 # Technical Specification — Baseline Contract & Workflow
+
 ## Petora — Sistem Manajemen Terpadu Petshop & Petcare
+
 ### Dokumen Baseline Contract | 13 September 2026
 
 **Status:** Normative module and workflow contract. Berlaku bersama `docs/00-baseline-governance.md`.
@@ -8,6 +10,7 @@
 ---
 
 ## Daftar Isi
+
 1. [Ringkasan Eksekutif](#1-ringkasan-eksekutif)
 2. [Modul Auth & User Management](#2-modul-auth--user-management)
 3. [Modul CRM & Pasien](#3-modul-crm--pasien)
@@ -19,9 +22,10 @@
 9. [Modul Engagement & Loyalty](#9-modul-engagement--loyalty)
 10. [Modul Keuangan & Operasional](#10-modul-keuangan--operasional)
 11. [Modul Customer Portal](#11-modul-customer-portal)
-12. [Cross-Cutting Contracts](#12-cross-cutting-contracts)
+12. [Cross-cutting implementation reference](#12-cross-cutting-implementation-reference)
 13. [Edge Cases & Error Matrix](#13-edge-cases--error-matrix)
-14. [Glosarium Kontrak](#14-glosarium-kontrak)
+14. [Full Product Extension Workflows](#14-full-product-extension-workflows)
+15. [Glosarium Kontrak](#15-glosarium-kontrak)
 
 ---
 
@@ -55,7 +59,7 @@ Dokumen ini mendefinisikan **kontrak teknis + workflow detail** untuk setiap mod
 | Layer | Technology |
 |-------|-----------|
 | Frontend Framework | **SolidJS** (bukan React) |
-| Meta Framework | Vite + Solid SPA untuk MVP; SolidStart SSR tidak aktif tanpa decision register approval |
+| Meta Framework | Vite + Solid SPA untuk initial release; SolidStart SSR tidak aktif tanpa decision register approval |
 | UI Components | shadcn-solid atau Kobalte + Tailwind |
 | Data Fetching | `@tanstack/solid-query` (`createQuery`, `createMutation`) |
 | State Management | SolidJS native (`createSignal`, `createStore`) |
@@ -81,7 +85,7 @@ Dokumen ini mendefinisikan **kontrak teknis + workflow detail** untuk setiap mod
 
 ### 2.2 Workflow: Login
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │ Step 1: Client mengirim { username, pin } ke Edge Function │
 └─────────────────────────────────────────────────────────────┘
@@ -138,6 +142,7 @@ Dokumen ini mendefinisikan **kontrak teknis + workflow detail** untuk setiap mod
 ```
 
 **Edge Cases:**
+
 - Username dengan spasi → ditolak di validasi Zod
 - PIN dengan huruf → ditolak di validasi Zod
 - Concurrent login dari device berbeda → diizinkan (session terpisah)
@@ -146,6 +151,7 @@ Dokumen ini mendefinisikan **kontrak teknis + workflow detail** untuk setiap mod
 ### 2.3 Workflow: Create User (Staff — Owner Only)
 
 **Input:**
+
 ```typescript
 {
   username: string,
@@ -157,7 +163,9 @@ Dokumen ini mendefinisikan **kontrak teknis + workflow detail** untuk setiap mod
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Authorization check
   → Jika caller.role != OWNER: throw FORBIDDEN
 
@@ -169,19 +177,23 @@ Step 3: Check username uniqueness (case-sensitive)
 Step 4: Hash PIN (bcrypt, salt rounds = 12)
 
 Step 5: Insert user with:
-  - created_by = caller.id
-  - is_active = true
-  - failed_login_attempts = 0
+
+- created_by = caller.id
+- is_active = true
+- failed_login_attempts = 0
 
 Step 6: Insert audit_log:
-  - action = 'CREATE_USER'
-  - entity_type = 'users'
-  - new_values = { id, username, role, created_by }
+
+- action = 'CREATE_USER'
+- entity_type = 'users'
+- new_values = { id, username, role, created_by }
 
 Step 7: Return user (without pin_hash)
+
 ```
 
 **Edge Cases:**
+
 - Owner mencoba membuat akun OWNER lain → ditolak (role OWNER hanya via seed)
 - Username yang sama dengan user yang sudah di-soft-delete → tetap ditolak (unique constraint global)
 - Admin mencoba membuat akun staff → ditolak di RLS + Edge Function
@@ -189,6 +201,7 @@ Step 7: Return user (without pin_hash)
 ### 2.4 Workflow: Reset PIN
 
 **Input:**
+
 ```typescript
 {
   target_user_id: string,
@@ -197,7 +210,8 @@ Step 7: Return user (without pin_hash)
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Authorization check
   - Fetch target_user
   - Jika target.role in [OWNER, ADMIN, DOKTER, KASIR] AND caller.role != OWNER:
@@ -226,6 +240,7 @@ Step 6: Return success
 ### 2.5 Workflow: Change PIN (Self)
 
 **Input:**
+
 ```typescript
 {
   old_pin: string,
@@ -234,7 +249,9 @@ Step 6: Return success
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch current user
 
 Step 2: Verify old_pin matches pin_hash
@@ -249,6 +266,7 @@ Step 5: Update user
 Step 6: Insert audit_log: action = 'CHANGE_PIN'
 
 Step 7: Return success
+
 ```
 
 ### 2.6 RLS Policies — `users` Table
@@ -315,6 +333,7 @@ CREATE POLICY "Admin can update customers" ON users
 #### 3.1.2 Workflow: Create Customer
 
 **Input:**
+
 ```typescript
 {
   name: string,
@@ -333,33 +352,40 @@ CREATE POLICY "Admin can update customers" ON users
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Authorization check
   → Caller must be OWNER or ADMIN
 
 Step 2: Validate via createCustomerSchema
-  - Jika create_account = true: username & pin wajib
-  - Jika username provided: validate uniqueness
+
+- Jika create_account = true: username & pin wajib
+- Jika username provided: validate uniqueness
 
 Step 3: Insert customer with:
-  - is_guest default = false (kecuali di-specify)
-  - tags default = []
-  - is_active = true
+
+- is_guest default = false (kecuali di-specify)
+- tags default = []
+- is_active = true
 
 Step 4: Jika create_account = true:
-  - Call fn_create_user internally dengan:
-    - role = 'CUSTOMER'
-    - customer_id = new_customer.id
-    - created_by = caller.id
-    - username & pin as provided
-  - Jika username conflict: rollback customer creation
+
+- Call fn_create_user internally dengan:
+  - role = 'CUSTOMER'
+  - customer_id = new_customer.id
+  - created_by = caller.id
+  - username & pin as provided
+- Jika username conflict: rollback customer creation
 
 Step 5: Insert audit_log: action = 'CREATE_CUSTOMER'
 
 Step 6: Return customer (with user if created)
+
 ```
 
 **Edge Cases:**
+
 - Email duplikat → diizinkan (tidak ada unique constraint pada email)
 - Phone duplikat → diizinkan (satu keluarga bisa punya nomor sama)
 - Guest customer tanpa data apapun → minimal `name` wajib
@@ -368,6 +394,7 @@ Step 6: Return customer (with user if created)
 #### 3.1.3 Workflow: Convert Guest → Registered
 
 **Input:**
+
 ```typescript
 {
   customer_id: string,
@@ -376,7 +403,8 @@ Step 6: Return customer (with user if created)
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Fetch customer
   → Jika is_guest = false: throw ALREADY_REGISTERED
 
@@ -411,6 +439,7 @@ Step 5: Return updated customer
 #### 3.2.2 Workflow: Create Pet
 
 **Input:**
+
 ```typescript
 {
   customer_id: string,
@@ -425,22 +454,27 @@ Step 5: Return updated customer
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Verify customer exists AND is_active = true
   → Jika tidak: throw CUSTOMER_NOT_FOUND
 
 Step 2: Validate via createPetSchema
-  - birth_date tidak boleh di masa depan
-  - species wajib (anjing/kucing/kelinci/dll)
+
+- birth_date tidak boleh di masa depan
+- species wajib (anjing/kucing/kelinci/dll)
 
 Step 3: Insert pet
 
 Step 4: Insert audit_log
 
 Step 5: Return pet
+
 ```
 
 **Edge Cases:**
+
 - Customer yang sudah di-soft-delete → tidak bisa tambah pet
 - `birth_date` di masa depan → ditolak
 - Duplicate `microchip_number` → diizinkan (tidak ada unique constraint)
@@ -448,6 +482,7 @@ Step 5: Return pet
 #### 3.2.3 Workflow: Add Vaccine
 
 **Input:**
+
 ```typescript
 {
   pet_id: string,
@@ -459,7 +494,8 @@ Step 5: Return pet
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Verify pet exists
 
 Step 2: vaccination_date tidak boleh di masa depan
@@ -474,6 +510,7 @@ Step 5: Return vaccine
 ```
 
 **Business Rule:** Vaksin "Overdue" dihitung di client-side:
+
 ```typescript
 const isOverdue = (vaccine: PetVaccine) => {
   if (!vaccine.due_date) return false;
@@ -489,7 +526,8 @@ const isOverdue = (vaccine: PetVaccine) => {
 
 #### 4.1.1 State Machine
 
-```
+```text
+
                     ┌─────────────┐
                     │   WAITING   │
                     └──────┬──────┘
@@ -505,15 +543,18 @@ const isOverdue = (vaccine: PetVaccine) => {
     ┌──────────────┐       │
     │     DONE     │◄──────┘
     └──────────────┘
+
 ```
 
 **Transisi yang diizinkan:**
+
 - `WAITING` → `IN_PROGRESS` (dokter mulai periksa)
 - `WAITING` → `CANCELLED`
 - `IN_PROGRESS` → `DONE`
 - `IN_PROGRESS` → `CANCELLED` (rare, tapi diizinkan)
 
 **Transisi yang DITOLAK:**
+
 - `DONE` → apapun (final state)
 - `CANCELLED` → apapun (final state)
 
@@ -530,6 +571,7 @@ const isOverdue = (vaccine: PetVaccine) => {
 #### 4.1.3 Workflow: Create Appointment
 
 **Input:**
+
 ```typescript
 {
   customer_id: string,
@@ -544,7 +586,8 @@ const isOverdue = (vaccine: PetVaccine) => {
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Validate via createAppointmentSchema
   - appointment_date tidak boleh di masa lalu (kecuali is_from_portal = false dan caller = Owner/Admin)
   - appointment_time dalam jam operasional (configurable)
@@ -570,6 +613,7 @@ Step 7: Return appointment with queue_number
 ```
 
 **Edge Cases:**
+
 - Pet tidak belong to customer → ditolak
 - Doctor tidak exist / bukan role DOKTER → ditolak
 - Multiple appointments untuk pet yang sama di tanggal yang sama → diizinkan (tapi warning di UI)
@@ -578,6 +622,7 @@ Step 7: Return appointment with queue_number
 #### 4.1.4 Workflow: Update Status
 
 **Input:**
+
 ```typescript
 {
   appointment_id: string,
@@ -586,25 +631,30 @@ Step 7: Return appointment with queue_number
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch appointment
 
 Step 2: Validate state transition (lihat state machine)
   → Jika invalid: throw INVALID_STATE_TRANSITION
 
 Step 3: Jika new_status = 'IN_PROGRESS':
-  - Verify caller is assigned doctor OR caller is Owner/Admin
+
+- Verify caller is assigned doctor OR caller is Owner/Admin
 
 Step 4: Jika new_status = 'DONE':
-  - Check if medical_record exists for this appointment
-  - Jika belum ada: set flag `prompt_create_medical_record = true` di response
-  - Update appointment status
+
+- Check if medical_record exists for this appointment
+- Jika belum ada: set flag `prompt_create_medical_record = true` di response
+- Update appointment status
 
 Step 5: Update appointment
 
 Step 6: Insert audit_log
 
 Step 7: Return { appointment, prompt_create_medical_record? }
+
 ```
 
 ### 4.2 Medical Records
@@ -622,6 +672,7 @@ Step 7: Return { appointment, prompt_create_medical_record? }
 #### 4.2.2 Workflow: Create Medical Record
 
 **Input:**
+
 ```typescript
 {
   appointment_id: string,
@@ -642,7 +693,8 @@ Step 7: Return { appointment, prompt_create_medical_record? }
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Fetch appointment
   → Jika tidak exist: throw APPOINTMENT_NOT_FOUND
   → Jika status != 'IN_PROGRESS' dan caller bukan Owner/Admin:
@@ -667,6 +719,7 @@ Step 7: Return medical_record
 ```
 
 **Edge Cases:**
+
 - Dokter lain mencoba edit medical record bukan miliknya → ditolak
 - Appointment `status = DONE` tapi belum ada medical record → diizinkan (warning di UI)
 - Attachment upload → via Supabase Storage, URL disimpan di array `attachments`
@@ -674,6 +727,7 @@ Step 7: Return medical_record
 #### 4.2.3 Workflow: Update Medical Record
 
 **Input:**
+
 ```typescript
 {
   medical_record_id: string,
@@ -682,7 +736,9 @@ Step 7: Return medical_record
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch medical_record
 
 Step 2: Verify caller is creator OR caller is Owner
@@ -695,6 +751,7 @@ Step 4: Update medical_record, set updated_at = NOW()
 Step 5: Insert audit_log dengan old_values & new_values
 
 Step 6: Return updated medical_record
+
 ```
 
 ---
@@ -705,21 +762,24 @@ Step 6: Return updated medical_record
 
 #### 5.1.1 Booking State Machine
 
-```
+```text
+
 ┌─────────┐     check-in     ┌─────────────┐    check-out    ┌──────────────┐
 │ BOOKED  │ ───────────────► │ CHECKED_IN  │ ──────────────► │ CHECKED_OUT  │
 └────┬────┘                  └─────────────┘                 └──────────────┘
-     │                                                             
-     │ cancel                                                      
-     ▼                                                             
-┌─────────────┐                                                    
-│  CANCELLED  │                                                    
-└─────────────┘                                                    
+     │
+     │ cancel
+     ▼
+┌─────────────┐
+│  CANCELLED  │
+└─────────────┘
+
 ```
 
 #### 5.1.2 Room State Machine
 
-```
+```text
+
 AVAILABLE ──reserve──► RESERVED ──check-in──► OCCUPIED ──check-out──► AVAILABLE
     ▲                                           │
     │                                           │
@@ -727,6 +787,7 @@ AVAILABLE ──reserve──► RESERVED ──check-in──► OCCUPIED ─�
 
 MAINTENANCE ◄── set maintenance ─── (dari status manapun kecuali OCCUPIED)
 (available) ──► clear maintenance ──► AVAILABLE
+
 ```
 
 ### 5.2 Contract
@@ -747,6 +808,7 @@ MAINTENANCE ◄── set maintenance ─── (dari status manapun kecuali OCC
 ### 5.3 Workflow: Create Booking
 
 **Input:**
+
 ```typescript
 {
   pet_id: string,
@@ -761,7 +823,8 @@ MAINTENANCE ◄── set maintenance ─── (dari status manapun kecuali OCC
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Validate dates
   - check_in_date >= TODAY
   - check_out_date > check_in_date
@@ -794,6 +857,7 @@ Step 9: Return booking
 ### 5.4 Workflow: Check-in
 
 **Input:**
+
 ```typescript
 {
   booking_id: string,
@@ -802,30 +866,36 @@ Step 9: Return booking
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch booking
   → Jika status != 'BOOKED': throw INVALID_STATE
 
 Step 2: Jika actual_room_id provided dan berbeda dari booking.room_id:
-  - Check new room availability
-  - Release old room (set AVAILABLE)
-  - Reserve new room (set RESERVED)
-  - Update booking.room_id
+
+- Check new room availability
+- Release old room (set AVAILABLE)
+- Reserve new room (set RESERVED)
+- Update booking.room_id
 
 Step 3: Update booking:
-  - status = 'CHECKED_IN'
-  - actual_check_in_at = NOW()
+
+- status = 'CHECKED_IN'
+- actual_check_in_at = NOW()
 
 Step 4: Update room status = 'OCCUPIED'
 
 Step 5: Insert audit_log
 
 Step 6: Return booking
+
 ```
 
 ### 5.5 Workflow: Check-out
 
 **Input:**
+
 ```typescript
 {
   booking_id: string,
@@ -834,7 +904,8 @@ Step 6: Return booking
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Fetch booking
   → Jika status != 'CHECKED_IN': throw INVALID_STATE
 
@@ -866,6 +937,7 @@ Step 8: Return booking
 ```
 
 **Edge Cases:**
+
 - Check-out di tengah malam (melewati midnight) → dihitung 1 hari tambahan
 - Check-out lebih awal dari rencana → tidak ada refund otomatis (kebijakan bisnis)
 - Check-out lebih lama dari rencana → charge tambahan otomatis
@@ -874,6 +946,7 @@ Step 8: Return booking
 ### 5.6 Workflow: Add Pet Hotel Log
 
 **Input:**
+
 ```typescript
 {
   booking_id: string,
@@ -884,7 +957,9 @@ Step 8: Return booking
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch booking
   → Jika status != 'CHECKED_IN': throw BOOKING_NOT_ACTIVE
 
@@ -893,6 +968,7 @@ Step 2: Validate log_type: 'FEEDING' | 'MEDICINE' | 'NOTE'
 Step 3: Insert log with logged_at = NOW()
 
 Step 4: Return log
+
 ```
 
 ---
@@ -901,7 +977,8 @@ Step 4: Return log
 
 ### 6.1 State Machine
 
-```
+```text
+
 ┌─────────┐   start    ┌─────────────┐   finish   ┌──────┐
 │ BOOKED  │ ─────────► │ IN_PROGRESS │ ─────────► │ DONE │
 └────┬────┘            └─────────────┘            └──────┘
@@ -911,6 +988,7 @@ Step 4: Return log
 ┌─────────────┐
 │  CANCELLED  │
 └─────────────┘
+
 ```
 
 ### 6.2 Contract
@@ -929,6 +1007,7 @@ Step 4: Return log
 ### 6.3 Workflow: Create Grooming Booking
 
 **Input:**
+
 ```typescript
 {
   pet_id: string,
@@ -943,7 +1022,8 @@ Step 4: Return log
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Validate
   - Verify pet belongs to customer
   - Verify service exists and is_active
@@ -970,6 +1050,7 @@ Step 7: Return booking
 ### 6.4 Workflow: Finish Grooming
 
 **Input:**
+
 ```typescript
 {
   booking_id: string,
@@ -982,7 +1063,9 @@ Step 7: Return booking
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch booking
   → Jika status != 'IN_PROGRESS': throw INVALID_STATE
 
@@ -991,12 +1074,14 @@ Step 2: Update booking status = 'DONE'
 Step 3: Insert grooming_record with all fields
 
 Step 4: Auto-create invoice item:
-  - RPC `fn_create_grooming_invoice_item`
-  - Type = 'GROOMING'
+
+- RPC `fn_create_grooming_invoice_item`
+- Type = 'GROOMING'
 
 Step 5: Insert audit_log
 
 Step 6: Return { booking, record }
+
 ```
 
 ---
@@ -1020,6 +1105,7 @@ Step 6: Return { booking, record }
 #### 7.1.2 Workflow: Create Product
 
 **Input:**
+
 ```typescript
 {
   sku: string,
@@ -1039,7 +1125,8 @@ Step 6: Return { booking, record }
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Validate via createProductSchema
   - selling_price >= purchase_price (warning, not error)
   - stock_minimum <= stock_maximum (jika keduanya provided)
@@ -1062,6 +1149,7 @@ Step 7: Return product
 ```
 
 **Edge Cases:**
+
 - SKU dengan spasi → ditolak di Zod
 - `selling_price < purchase_price` → warning di UI, tapi diizinkan (bisa saja clearance)
 - `expiry_date` di masa lalu → ditolak
@@ -1069,12 +1157,14 @@ Step 7: Return product
 #### 7.1.3 Workflow: Archive vs Delete
 
 **`fn_archive_product(product_id)`:**
+
 - Caller must be OWNER
 - Update `status = 'ARCHIVED'`
 - Product tetap muncul di historical invoices
 - Tidak muncul di POS grid
 
 **`fn_delete_product(product_id)`:**
+
 - Caller must be OWNER
 - Check: tidak ada `InvoiceItem` yang mereferensikan `product_id`
 - Check: tidak ada `StockMovement` yang mereferensikan `product_id`
@@ -1096,6 +1186,7 @@ Step 7: Return product
 #### 7.2.2 Workflow: Record Stock Movement (Atomic)
 
 **Input:**
+
 ```typescript
 {
   product_id: string,
@@ -1108,19 +1199,24 @@ Step 7: Return product
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Validate
-  - quantity != 0
-  - movement_type valid
-  - Untuk OUT/RETURN/DAMAGED/EXPIRED: quantity harus positif (sistem yang negate)
+
+- quantity != 0
+- movement_type valid
+- Untuk OUT/RETURN/DAMAGED/EXPIRED: quantity harus positif (sistem yang negate)
 
 Step 2: Determine signed_quantity:
-  - IN, RETURN: +quantity
-  - OUT, DAMAGED, EXPIRED: -quantity
-  - ADJUSTMENT, OPNAME: signed quantity (bisa + atau -)
+
+- IN, RETURN: +quantity
+- OUT, DAMAGED, EXPIRED: -quantity
+- ADJUSTMENT, OPNAME: signed quantity (bisa + atau -)
 
 Step 3: Atomic stock update via RPC:
-  ```sql
+
+```sql
   UPDATE products
   SET stock_quantity = stock_quantity + signed_quantity,
       updated_at = NOW()
@@ -1131,6 +1227,7 @@ Step 3: Atomic stock update via RPC:
     )
   RETURNING *;
   ```
+
   → Jika tidak ada row returned: throw INSUFFICIENT_STOCK
 
 Step 4: Insert stock_movement record
@@ -1142,6 +1239,7 @@ Step 5: Check low stock alert:
 Step 6: Insert audit_log
 
 Step 7: Return { movement, new_stock }
+
 ```
 
 **Edge Cases:**
@@ -1161,7 +1259,8 @@ Step 7: Return { movement, new_stock }
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Fetch current product
 
 Step 2: Calculate difference = actual_quantity - current_stock
@@ -1180,7 +1279,7 @@ Step 5: Return movement
 
 #### 7.3.1 State Machine
 
-```
+```text
 ┌─────────┐   send    ┌──────┐   receive all   ┌──────────┐
 │  DRAFT  │ ────────► │ SENT │ ───────────────►│ RECEIVED │
 └────┬────┘           └──┬───┘                 └──────────┘
@@ -1206,6 +1305,7 @@ Step 5: Return movement
 #### 7.3.3 Workflow: Receive PO
 
 **Input:**
+
 ```typescript
 {
   po_id: string,
@@ -1218,31 +1318,37 @@ Step 5: Return movement
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch PO
   → Jika status in [RECEIVED, CANCELLED]: throw INVALID_STATE
 
 Step 2: Update PO:
-  - status = 'RECEIVED' (jika semua item fully received)
-  - status = 'PARTIAL_RECEIVED' (jika ada yang kurang)
-  - actual_arrival_date
+
+- status = 'RECEIVED' (jika semua item fully received)
+- status = 'PARTIAL_RECEIVED' (jika ada yang kurang)
+- actual_arrival_date
 
 Step 3: For each item:
-  - Update purchase_order_item.received_quantity
-  - Call fn_record_stock_movement:
-    - movement_type = 'IN'
-    - quantity = received_quantity
-    - reference_type = 'PURCHASE_ORDER'
-    - reference_id = po_id
+
+- Update purchase_order_item.received_quantity
+- Call fn_record_stock_movement:
+  - movement_type = 'IN'
+  - quantity = received_quantity
+  - reference_type = 'PURCHASE_ORDER'
+  - reference_id = po_id
 
 Step 4: Update PO total_amount (jika ada perubahan)
 
 Step 5: Insert audit_log
 
 Step 6: Return PO with items
+
 ```
 
 **Edge Cases:**
+
 - Receive lebih banyak dari yang di-order → diizinkan (bonus dari supplier), tapi warning
 - Receive lebih sedikit → `status = PARTIAL_RECEIVED`, bisa receive lagi nanti
 - PO yang sudah RECEIVED tidak bisa diubah
@@ -1253,7 +1359,8 @@ Step 6: Return PO with items
 
 ### 8.1 Invoice State Machine
 
-```
+```text
+
 ┌─────────┐  payment   ┌──────────────────┐  full payment   ┌──────┐
 │ UNPAID  │ ─────────► │ PARTIAL_PAYMENT  │ ──────────────► │ PAID │
 └────┬────┘            └──────────────────┘                 └──────┘
@@ -1263,6 +1370,7 @@ Step 6: Return PO with items
 ┌─────────────┐
 │  CANCELLED  │
 └─────────────┘
+
 ```
 
 ### 8.2 Contract
@@ -1279,6 +1387,7 @@ Step 6: Return PO with items
 ### 8.3 Workflow: Create Invoice (POS Checkout)
 
 **Input:**
+
 ```typescript
 {
   invoice_type: 'POS' | 'CLINICAL' | 'PET_HOTEL' | 'GROOMING' | 'MIXED',
@@ -1302,7 +1411,8 @@ Step 6: Return PO with items
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Validate via createInvoiceSchema
 
 Step 2: Calculate subtotal:
@@ -1361,6 +1471,7 @@ Step 14: Return invoice with items
 **Critical:** Step 6-10 **HARUS** dalam satu transaction untuk mencegah oversell.
 
 **Edge Cases:**
+
 - Concurrent checkout untuk produk yang sama → atomic SQL prevents oversell
 - Promotion expired saat checkout → ditolak di validasi
 - Customer tidak punya loyalty account tapi mau redeem → ditolak
@@ -1369,6 +1480,7 @@ Step 14: Return invoice with items
 ### 8.4 Workflow: Record Payment
 
 **Input:**
+
 ```typescript
 {
   invoice_id: string,
@@ -1380,7 +1492,9 @@ Step 14: Return invoice with items
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch invoice
   → Jika status = 'CANCELLED': throw INVOICE_CANCELLED
   → Jika status = 'PAID': throw INVOICE_ALREADY_PAID
@@ -1400,18 +1514,21 @@ Step 5: Update invoice:
     new_paid >= total → PAID
 
 Step 6: Jika status berubah menjadi PAID:
-  - Call fn_award_loyalty_points (jika customer registered)
-  - Insert notification untuk customer: "Pembayaran berhasil"
-  - Trigger feedback request (H+1 via scheduled job)
+
+- Call fn_award_loyalty_points (jika customer registered)
+- Insert notification untuk customer: "Pembayaran berhasil"
+- Trigger feedback request (H+1 via scheduled job)
 
 Step 7: Insert audit_log
 
 Step 8: Return { payment, invoice }
+
 ```
 
 ### 8.5 Workflow: Cancel Invoice
 
 **Input:**
+
 ```typescript
 {
   invoice_id: string,
@@ -1420,7 +1537,8 @@ Step 8: Return { payment, invoice }
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Fetch invoice with items
   → Jika status = 'CANCELLED': throw ALREADY_CANCELLED
 
@@ -1448,6 +1566,7 @@ Step 8: Return invoice
 ```
 
 **Edge Cases:**
+
 - Invoice yang sudah PAID dan ada pembayaran cash → refund manual di luar sistem (catat di notes)
 - Invoice dengan item PET_HOTEL yang sudah CHECKED_OUT → tetap bisa cancel, tapi pet hotel booking tidak otomatis berubah status
 - Partial payment yang sudah diterima → refund logic mengikuti `DEC-OPEN-003`; release diblokir sampai policy disetujui.
@@ -1455,17 +1574,21 @@ Step 8: Return invoice
 ### 8.6 Workflow: Cash Shift
 
 **Open Shift:**
+
 - Kasir login → sistem auto-create `cash_shift` dengan:
   - `open_time = NOW()`
   - `opening_cash = input dari kasir` (modal awal)
 
 **Close Shift:**
+
 - Kasir klik "Tutup Shift"
 - Input `closing_cash` (uang fisik di laci)
 - Sistem hitung `expected_cash`:
+
   ```typescript
   expected = opening_cash + SUM(payments where method = 'CASH')
   ```
+
 - Calculate `difference = closing_cash - expected`
 - Update `cash_shift` dengan `close_time`, `closing_cash`, `expected_cash`, `difference`
 - Jika `difference != 0`: flag untuk review oleh Admin/Owner
@@ -1492,6 +1615,7 @@ Step 8: Return invoice
 **Trigger:** Invoice status berubah ke PAID
 
 **Input:**
+
 ```typescript
 {
   customer_id: string,
@@ -1501,7 +1625,9 @@ Step 8: Return invoice
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch loyalty_member by customer_id
   → Jika tidak ada: skip (guest customer)
 
@@ -1526,11 +1652,13 @@ Step 6: Check tier upgrade:
   Call fn_check_tier_upgrade
 
 Step 7: Return transaction
+
 ```
 
 #### 9.1.3 Workflow: Redeem Points
 
 **Input:**
+
 ```typescript
 {
   customer_id: string,
@@ -1540,7 +1668,8 @@ Step 7: Return transaction
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Fetch loyalty_member
   → Jika tidak ada: throw NO_LOYALTY_ACCOUNT
 
@@ -1568,6 +1697,7 @@ Step 6: Return { transaction, discount_value }
 #### 9.1.4 Workflow: Check Tier Upgrade
 
 **Input:**
+
 ```typescript
 {
   member_id: string
@@ -1575,7 +1705,9 @@ Step 6: Return { transaction, discount_value }
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Fetch member with current tier
 
 Step 2: Fetch all tiers ordered by min_points ASC
@@ -1585,11 +1717,13 @@ Step 3: Find highest tier where member qualifies:
   OR member.total_spending >= tier.min_spending
 
 Step 4: Jika qualified tier > current tier:
-  - Update member.tier_id
-  - Insert notification: "Selamat! Anda naik ke tier {tier_name}"
-  - Insert audit_log
+
+- Update member.tier_id
+- Insert notification: "Selamat! Anda naik ke tier {tier_name}"
+- Insert audit_log
 
 Step 5: Return { upgraded: boolean, new_tier? }
+
 ```
 
 ### 9.2 Promotions
@@ -1608,6 +1742,7 @@ Step 5: Return { upgraded: boolean, new_tier? }
 #### 9.2.2 Workflow: Validate Promo Code
 
 **Input:**
+
 ```typescript
 {
   code: string,
@@ -1617,7 +1752,8 @@ Step 5: Return { upgraded: boolean, new_tier? }
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Fetch promotion by code
   → Jika tidak ada: throw PROMO_NOT_FOUND
 
@@ -1651,6 +1787,7 @@ Step 4: Return { valid: true, promotion, discount_amount }
 #### 9.3.2 Workflow: Create Feedback
 
 **Input:**
+
 ```typescript
 {
   customer_id: string,
@@ -1662,11 +1799,14 @@ Step 4: Return { valid: true, promotion, discount_amount }
 ```
 
 **Workflow:**
-```
+
+```text
+
 Step 1: Validate:
-  - rating in [1, 2, 3, 4, 5]
-  - Jika invoice_id provided: verify invoice belongs to customer
-  - Check if feedback already exists for this invoice
+
+- rating in [1, 2, 3, 4, 5]
+- Jika invoice_id provided: verify invoice belongs to customer
+- Check if feedback already exists for this invoice
   → Jika ya: throw FEEDBACK_ALREADY_EXISTS
 
 Step 2: Insert feedback
@@ -1674,6 +1814,7 @@ Step 2: Insert feedback
 Step 3: Insert notification untuk Admin: "New feedback received"
 
 Step 4: Return feedback
+
 ```
 
 ---
@@ -1696,6 +1837,7 @@ Step 4: Return feedback
 #### 10.1.2 Workflow: Create Expense
 
 **Input:**
+
 ```typescript
 {
   expense_date: string,
@@ -1709,7 +1851,8 @@ Step 4: Return feedback
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Validate
   - expense_date <= TODAY
   - amount > 0
@@ -1726,16 +1869,19 @@ Step 4: Return expense
 #### 10.1.3 Workflow: Approve/Reject/Reverse
 
 **Approve:**
+
 - Caller must be OWNER
 - Expense status must be PENDING
 - Update `status = 'APPROVED'`, `approved_by = caller.id`
 
 **Reject:**
+
 - Caller must be OWNER
 - Expense status must be PENDING
 - Update `status = 'REJECTED'`
 
 **Reverse** (untuk APPROVED expense):
+
 - Caller must be OWNER
 - Expense status must be APPROVED
 - Update `status = 'REVERSED'`
@@ -1748,6 +1894,7 @@ Reports adalah read-only queries. Tiap report memiliki contract sendiri.
 #### 10.2.1 Revenue Report
 
 **Input:**
+
 ```typescript
 {
   start_date: string,
@@ -1757,6 +1904,7 @@ Reports adalah read-only queries. Tiap report memiliki contract sendiri.
 ```
 
 **Output:**
+
 ```typescript
 {
   total_revenue: number,
@@ -1773,6 +1921,7 @@ Reports adalah read-only queries. Tiap report memiliki contract sendiri.
 ```
 
 **Query Logic:**
+
 ```sql
 SUM(invoices.total_amount) WHERE status = 'PAID'
 GROUP BY invoice_type, date period
@@ -1782,6 +1931,7 @@ Exclude CANCELLED invoices
 #### 10.2.2 Profit & Loss Report
 
 **Input:**
+
 ```typescript
 {
   start_date: string,
@@ -1790,6 +1940,7 @@ Exclude CANCELLED invoices
 ```
 
 **Output:**
+
 ```typescript
 {
   revenue: number,
@@ -1800,6 +1951,7 @@ Exclude CANCELLED invoices
 ```
 
 **Query Logic:**
+
 ```sql
 revenue = SUM(paid invoices)
 cogs = SUM(stock_movement OUT qty * product.purchase_price)
@@ -1810,6 +1962,7 @@ net_profit = revenue - cogs - expenses
 #### 10.2.3 Inventory Valuation Report
 
 **Input:**
+
 ```typescript
 {
   as_of_date: string
@@ -1817,6 +1970,7 @@ net_profit = revenue - cogs - expenses
 ```
 
 **Output:**
+
 ```typescript
 {
   total_value: number,
@@ -1832,6 +1986,7 @@ net_profit = revenue - cogs - expenses
 ```
 
 **Query Logic:**
+
 ```sql
 value = stock_quantity * purchase_price
 total_value = SUM(value)
@@ -1866,15 +2021,17 @@ Settings adalah konfigurasi sistem. Disimpan di tabel `settings` (key-value) ata
 #### 10.3.2 Workflow: Update Setting
 
 **Input:**
+
 ```typescript
 {
   key: string,
-  value: any
+  value: unknown
 }
 ```
 
 **Workflow:**
-```
+
+```text
 Step 1: Verify caller is OWNER
 
 Step 2: Validate key exists in allowed keys
@@ -1898,7 +2055,7 @@ Portal customer menggunakan kontrak yang sama dengan staff dashboard, tapi denga
 
 ### 11.2 Workflow: Book Appointment via Portal
 
-```
+```text
 Step 1: Customer login ke /portal
 
 Step 2: Navigate to Appointments → "Book New"
@@ -1920,7 +2077,7 @@ Step 8: Confirmation shown to customer
 
 ### 11.3 Workflow: Book Grooming via Portal
 
-```
+```text
 Step 1: Navigate to Grooming → "Book New"
 
 Step 2: Select pet
@@ -1937,7 +2094,7 @@ Step 6: Confirmation shown
 
 ### 11.4 Workflow: Book Pet Hotel via Portal
 
-```
+```text
 Step 1: Navigate to Pet Hotel → "Book New"
 
 Step 2: Select pet
@@ -1956,7 +2113,7 @@ Step 7: Confirmation shown
 
 ### 11.5 Workflow: Pay Invoice Online
 
-```
+```text
 Step 1: Navigate to Invoices
 
 Step 2: Select unpaid invoice
@@ -1974,7 +2131,7 @@ Step 7: Notification sent to customer
 
 ### 11.6 Workflow: Shop (E-Commerce Ringan)
 
-```
+```text
 Step 1: Browse products (hanya ACTIVE)
 
 Step 2: Add to cart (local state)
@@ -1994,183 +2151,16 @@ Step 7: Order tracking available di portal
 
 ---
 
-## 12. Cross-Cutting Contracts
+## 12. Cross-cutting implementation reference
 
-### 12.1 Number Generation (Atomic)
+Number generation, audit logging, notifications, realtime, storage, and their security rules memiliki satu pemilik canonical di [Technical Architecture Contract](02-technical-architecture-contract.md):
 
-```sql
--- Function untuk generate nomor urut per hari
-CREATE OR REPLACE FUNCTION fn_generate_sequence_number(
-  p_prefix TEXT,
-  p_date DATE
-) RETURNS TEXT
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_sequence INTEGER;
-  v_date_str TEXT;
-BEGIN
-  v_date_str := TO_CHAR(p_date, 'YYYYMMDD');
-  -- Atomic increment dengan row lock
-  INSERT INTO sequence_counters (prefix, date, current_value)
-  VALUES (p_prefix, v_date_str, 1)
-  ON CONFLICT (prefix, date)
-  DO UPDATE SET current_value = sequence_counters.current_value + 1
-  RETURNING current_value INTO v_sequence;
-  RETURN p_prefix || '-' || v_date_str || '-' || LPAD(v_sequence::TEXT, 4, '0');
-END;
-$$;
-```
+- number generation dan atomic sequence: section 3 dan 17;
+- audit, notification, dan Edge Function boundary: sections 6, 12, dan 18;
+- realtime: section 19;
+- storage, signed URL, bucket policy, dan retention: section 20.
 
-**Usage:**
-- Invoice: `fn_generate_sequence_number('INV', CURRENT_DATE)`
-- Medical Record: `fn_generate_sequence_number('MR', CURRENT_DATE)`
-- Pet Hotel Booking: `fn_generate_sequence_number('BK', CURRENT_DATE)`
-- Grooming Booking: `fn_generate_sequence_number('GR', CURRENT_DATE)`
-- Purchase Order: `fn_generate_sequence_number('PO', CURRENT_DATE)`
-
-### 12.2 Audit Logging
-
-```typescript
-// lib/audit.ts
-export async function logAudit(params: {
-  user_id: string;
-  action: string;
-  entity_type: string;
-  entity_id?: string;
-  old_values?: Record<string, any>;
-  new_values?: Record<string, any>;
-  ip_address?: string;
-  user_agent?: string;
-}) {
-  await supabase.from('audit_logs').insert({
-    ...params,
-    created_at: new Date().toISOString(),
-  });
-}
-```
-
-**Actions yang wajib di-log:**
-- LOGIN, LOGOUT
-- CREATE_USER, UPDATE_USER, RESET_PIN, CHANGE_PIN, DEACTIVATE_USER
-- CREATE_CUSTOMER, UPDATE_CUSTOMER, DELETE_CUSTOMER, CONVERT_GUEST
-- CREATE_PET, UPDATE_PET, DELETE_PET
-- CREATE_APPOINTMENT, UPDATE_APPOINTMENT_STATUS, CANCEL_APPOINTMENT
-- CREATE_MEDICAL_RECORD, UPDATE_MEDICAL_RECORD, DELETE_MEDICAL_RECORD
-- CREATE_PET_HOTEL_BOOKING, PET_HOTEL_CHECKIN, PET_HOTEL_CHECKOUT
-- CREATE_GROOMING_BOOKING, START_GROOMING, FINISH_GROOMING
-- CREATE_PRODUCT, UPDATE_PRODUCT, ARCHIVE_PRODUCT, DELETE_PRODUCT
-- RECORD_STOCK_MOVEMENT, STOCK_OPNAME
-- CREATE_PO, RECEIVE_PO, CANCEL_PO
-- CREATE_INVOICE, RECORD_PAYMENT, CANCEL_INVOICE
-- EARN_LOYALTY_POINTS, REDEEM_LOYALTY_POINTS, REVERSE_LOYALTY_POINTS
-- CREATE_PROMOTION, UPDATE_PROMOTION, CANCEL_PROMOTION
-- CREATE_EXPENSE, APPROVE_EXPENSE, REJECT_EXPENSE, REVERSE_EXPENSE
-- CREATE_FEEDBACK
-- UPDATE_SETTING
-
-### 12.3 Notifications
-
-```typescript
-// lib/notifications.ts
-export async function sendNotification(params: {
-  user_id?: string;  // null = broadcast
-  title: string;
-  message: string;
-  type: 'INFO' | 'WARNING' | 'ALERT' | 'REMINDER';
-  data?: Record<string, any>;
-}) {
-  await supabase.from('notifications').insert({
-    ...params,
-    is_read: false,
-    created_at: new Date().toISOString(),
-  });
-  
-  // Optional: trigger WhatsApp/Email via Edge Function
-  if (process.env.ENABLE_WHATSAPP_NOTIFICATIONS) {
-    await supabase.functions.invoke('send-whatsapp', { body: params });
-  }
-}
-```
-
-### 12.4 Realtime Subscriptions (SolidJS)
-
-```typescript
-// lib/realtime.ts
-export function subscribeToAppointments(date: string, callback: (payload: any) => void) {
-  return supabase
-    .channel('appointments-' + date)
-    .on('postgres_changes', {
-      event: '*',
-      schema: 'public',
-      table: 'appointments',
-      filter: `appointment_date=eq.${date}`,
-    }, callback)
-    .subscribe();
-}
-
-export function subscribeToPetHotelRooms(callback: (payload: any) => void) {
-  return supabase
-    .channel('rooms')
-    .on('postgres_changes', {
-      event: 'UPDATE',
-      schema: 'public',
-      table: 'rooms',
-    }, callback)
-    .subscribe();
-}
-
-export function subscribeToNotifications(userId: string, callback: (payload: any) => void) {
-  return supabase
-    .channel('notifications-' + userId)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'notifications',
-      filter: `user_id=eq.${userId}`,
-    }, callback)
-    .subscribe();
-}
-```
-
-### 12.5 File Upload (Supabase Storage)
-
-```typescript
-// lib/storage.ts
-export async function uploadFile(
-  bucket: 'medical-records' | 'pet-hotel' | 'grooming' | 'products' | 'customers' | 'pets' | 'expenses',
-  file: File,
-  path: string
-): Promise<string> {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${path}/${crypto.randomUUID()}.${fileExt}`;
-  
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: false,
-    });
-  
-  if (error) throw error;
-  
-  const { data: { publicUrl } } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(data.path);
-  
-  return publicUrl;
-}
-```
-
-**Storage Buckets & RLS:**
-- `medical-records` — Owner, Admin, Dokter (read/write), Customer (read own)
-- `pet-hotel` — Owner, Admin (read/write), Customer (read own)
-- `grooming` — Owner, Admin, Groomer (read/write), Customer (read own)
-- `products` — Owner, Admin (read/write), All authenticated (read)
-- `customers` — Owner, Admin (read/write), Customer (read own)
-- `pets` — Owner, Admin (read/write), Customer (read own)
-- `expenses` — Owner, Admin (read/write)
+Workflow di dokumen ini hanya menetapkan kapan cross-cutting capability dipanggil dan event apa yang wajib terjadi. Implementasi tidak boleh menyalin helper teknis ke file ini.
 
 ---
 
@@ -2291,7 +2281,127 @@ export enum ErrorCode {
 
 ---
 
-## 14. Glosarium Kontrak
+## 14. Full Product Extension Workflows
+
+Bagian ini mendefinisikan workflow setelah initial release. Capability yang berstatus `BLOCKED` tidak boleh dipalsukan sebagai fitur aktif; implementasi baru boleh dimulai setelah decision dan dependency pada traceability matrix selesai.
+
+### 14.1 Multi-business dan branch isolation (`PLATFORM-003`)
+
+**State business:** `PROVISIONING -> ACTIVE -> SUSPENDED -> CLOSED`.
+
+**State membership:** `INVITED -> ACTIVE -> REVOKED`.
+
+**Workflow onboarding business:**
+
+1. Owner meminta business profile, timezone, currency policy, branch awal, dan contact.
+2. Service memvalidasi input dan membuat business dalam `PROVISIONING` secara atomic.
+3. Sistem membuat membership Owner, branch default, settings scope, audit event, dan bootstrap task.
+4. Owner menyelesaikan verification dan mengaktifkan business.
+5. Semua query, unique constraint, storage path, audit event, report, notification, dan job wajib membawa `business_id`.
+
+**Invariants:**
+
+- user hanya dapat memiliki membership yang aktif dan tidak dapat membaca tenant lain;
+- branch tidak dapat dihapus bila masih memiliki histori transaksi;
+- suspend menghentikan operasi baru tetapi mempertahankan read/audit sesuai policy;
+- closed business masuk retention/deletion workflow, bukan hard delete langsung.
+
+**Permission:** Owner mengelola business dan membership; Admin mengelola branch sesuai scope; staff hanya dapat bekerja pada branch yang aktif; Customer hanya melihat data customer pada business terkait.
+
+**Failure path:** tenant context hilang, membership revoked, atau cross-tenant query ditolak dengan `FORBIDDEN` dan dicatat sebagai security audit event.
+
+### 14.2 Offline POS dan reconciliation (`POS-003`)
+
+**Queue state:** `LOCAL_PENDING -> SYNCING -> COMMITTED | CONFLICT | REJECTED`.
+
+**Allowed offline operations:** cart draft, customer lookup cache, product cache, dan transaksi yang policy-nya mengizinkan. Payment online, refund, stock adjustment, dan operasi yang membutuhkan fresh authorization tidak boleh dianggap sukses saat offline.
+
+**Workflow:**
+
+1. Device membuat `idempotency_key`, device ID, actor, schema version, timestamp, dan payload tervalidasi.
+2. Queue menyimpan payload terenkripsi dengan TTL dan status `LOCAL_PENDING`.
+3. Saat online, sync worker mengirim item berurutan ke server.
+4. Server memverifikasi session/device, schema version, stock/price freshness, idempotency, dan business boundary.
+5. Server commit atomic atau mengembalikan `CONFLICT`/`REJECTED`; device tidak boleh mengubah hasil server.
+6. Kasir menyelesaikan conflict melalui workflow yang ter-audit; replay item yang sama menghasilkan hasil yang sama.
+
+**Invariants:** tidak ada duplicate invoice, duplicate payment, negative stock, queue replay tanpa audit, atau silent discard saat device hilang.
+
+**Recovery:** logout device, device loss, clock skew, queue expiry, partial sync, dan upgrade schema wajib memiliki test serta manual reconciliation procedure.
+
+### 14.3 Commerce order dan fulfillment (`COMMERCE-001`)
+
+**Order state:** `DRAFT -> PENDING_PAYMENT -> PAID -> ALLOCATED -> FULFILLING -> READY | SHIPPED -> COMPLETED`; alternate terminal states `CANCELLED`, `REFUNDED`, `FAILED`.
+
+**Workflow:**
+
+1. Customer membuat order dari active catalog; harga, promotion, tax, delivery, dan currency disnapshot pada order.
+2. Sistem membuat payment intent dengan idempotency key.
+3. Callback provider diverifikasi dan diproses sekali; payment sukses mengubah order menjadi `PAID`.
+4. Allocation mengunci stok; partial allocation harus memiliki policy eksplisit.
+5. Staff menjalankan pickup/delivery/ship dengan proof dan actor.
+6. Completion mengunci fulfillment history; return/refund memakai compensating ledger dan tidak menghapus invoice.
+
+**Invariants:** snapshot harga tidak berubah karena master price update; payment total, refund total, allocation, dan stock ledger harus rekonsiliasi.
+
+### 14.4 Membership, recurring care, dan subscription (`SERVICE-001`)
+
+**Membership state:** `PENDING -> ACTIVE -> PAUSED -> ACTIVE | CANCELLED | EXPIRED`.
+
+**Workflow:**
+
+1. Customer menyetujui plan, price, benefit, consent, period, cancellation window, dan payment mandate.
+2. Sistem membuat subscription dan next billing date; activation hanya setelah payment atau policy trial yang disetujui.
+3. Scheduler membuat recurring appointment atau entitlement tanpa melewati capacity check.
+4. Billing failure masuk `PAST_DUE`, retry schedule, dan customer notification; tidak mengaktifkan benefit baru tanpa entitlement valid.
+5. Pause, cancel, renew, refund, dan expiry membuat ledger serta audit event.
+
+**Invariants:** satu active entitlement per plan scope, tidak ada double charge, benefit usage tidak melebihi allowance, dan consent withdrawal menghentikan future communication.
+
+### 14.5 Provider adapter dan webhook (`INTEGRATION-001`)
+
+**Webhook state:** `RECEIVED -> VERIFIED -> PROCESSING -> PROCESSED`; failure states `REJECTED`, `RETRY_SCHEDULED`, `DEAD_LETTER`.
+
+**Workflow:**
+
+1. Endpoint menerima raw request dengan correlation ID dan menyimpan envelope minimal tanpa secret.
+2. Signature, timestamp tolerance, provider event ID, dan schema divalidasi.
+3. Duplicate event dikembalikan sebagai idempotent success tanpa efek kedua.
+4. Handler menjalankan state transition internal dalam transaction/outbox boundary.
+5. Provider response dikirim setelah acceptance; retry menggunakan backoff dan dead-letter threshold.
+6. Reconciliation job membandingkan provider settlement dengan internal ledger.
+
+**Invariants:** provider tidak boleh langsung mengubah database tanpa validation; secret tidak boleh masuk log; event yang tidak dikenal tidak boleh dipaksa menjadi sukses.
+
+### 14.6 Metric catalog dan reporting (`ANALYTICS-001`)
+
+Setiap metric wajib memiliki `metric_id`, definisi bisnis, source tables, timezone, currency, filter tenant/branch, freshness target, owner, dan version.
+
+**Workflow:**
+
+1. Metric owner menyetujui definisi dan query contract.
+2. Read model dibangun dari source of truth secara repeatable dan mencatat watermark.
+3. Report menerapkan RLS/report scope dan menampilkan freshness serta data quality status.
+4. Export dan scheduled report membuat audit event; perubahan definisi menghasilkan metric version baru.
+
+**Invariants:** dashboard tidak boleh mengubah ledger, angka finansial harus rekonsiliasi, late-arriving data harus ditandai, dan customer/tenant data tidak boleh bocor melalui export.
+
+### 14.7 Resilience, lifecycle, dan deprecation (`RESILIENCE-001`, `LIFECYCLE-001`, `GOV-001`)
+
+**Release state:** `DRAFT -> VERIFIED -> APPROVED -> DEPLOYING -> OBSERVING -> RELEASED`; failure states `BLOCKED`, `ROLLED_BACK`, `REJECTED`.
+
+**Workflow:**
+
+1. Change owner menghubungkan requirement, decision, migration, compatibility, test, runbook, dan observability.
+2. CI menghasilkan artifact immutable dan evidence.
+3. Staging menjalankan migration rehearsal, load/security test, backup restore, dan smoke test.
+4. Approval menetapkan rollout window, owner, rollback version, RTO/RPO impact, dan communication plan.
+5. Production deploy mengikuti expand-migrate-contract; observation window memeriksa health, error, queue, audit, dan reconciliation.
+6. Deprecation mengumumkan replacement, compatibility window, migration tool, telemetry, dan removal approval.
+
+**Invariants:** tidak ada breaking removal tanpa consumer evidence, tidak ada rollback database destruktif tanpa recovery proof, dan release yang belum `RELEASED` tidak boleh dianggap selesai.
+
+## 15. Glosarium Kontrak
 
 | Istilah | Definisi |
 |---------|----------|

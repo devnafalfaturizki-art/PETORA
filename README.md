@@ -36,10 +36,10 @@ docs/
 - Dokumen bernomor `00` sampai `03` adalah kontrak normatif. Dokumen `07` adalah artifact delivery normatif. Ketentuan yang menggunakan kata `MUST`, `MUST NOT`, `REQUIRED`, atau `WAJIB` bersifat mengikat.
 - README dan operational guide menjelaskan penggunaan, tetapi tidak dapat mengubah kontrak teknis atau business rule.
 - Tidak ada implementasi yang boleh dimulai dari asumsi yang tidak tercatat. Requirement yang belum diputuskan harus berstatus `OPEN` dan memblokir release jika mempengaruhi security, data integrity, billing, atau authorization.
-- Status `Future`, `Optional`, atau `Planned` bukan bagian dari MVP sampai diaktifkan melalui decision register dan acceptance criteria.
+- Initial release adalah milestone pertama, bukan akhir product roadmap. Status `Future`, `Optional`, atau `Planned` berarti capability belum aktif pada release tertentu; capability tersebut tetap harus memiliki track, owner, dependency, dan acceptance criteria sebelum dijadwalkan.
 
 ## Status baseline saat ini
 
 - Baseline dokumentasi: `v1.0-draft`.
 - Status implementasi: belum ada source code aplikasi, migration, test suite, atau konfigurasi deployment di repository ini.
-- Karena itu repository belum dapat dinyatakan production-ready. Checklist release menjadi syarat perubahan status menjadi `v1.0-release`.
+- Karena itu repository belum dapat dinyatakan production-ready. Checklist release menjadi syarat perubahan status menjadi `initial-release` atau release train berikutnya; status tersebut belum berarti complete product.

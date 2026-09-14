@@ -1,4 +1,5 @@
 # AGENTS.md — Aturan Pengembangan Petora
+
 ## Constitution & Implementation Rules | Baseline Final
 
 ---
@@ -6,6 +7,7 @@
 ## 1. Preamble & Tujuan
 
 Dokumen ini adalah **konstitusi pengembangan** untuk sistem Petora. Setiap AI agent dan developer **WAJIB** mengikuti aturan di sini tanpa pengecualian. Dokumen ini melengkapi:
+
 - `docs/00-baseline-governance.md` — sumber kebenaran, precedence, status, dan change control
 - `docs/01-product-baseline.md` — spesifikasi produk dan feature requirements
 - `docs/02-technical-architecture-contract.md` — kontrak arsitektur teknis
@@ -14,6 +16,7 @@ Dokumen ini adalah **konstitusi pengembangan** untuk sistem Petora. Setiap AI ag
 Jika aturan di dokumen ini dan baseline governance tampak bertentangan, hentikan implementasi dan catat keputusan di `docs/06-decision-register.md` sebelum melanjutkan.
 
 **Tujuan utama:**
+
 1. Menghilangkan ambiguitas dalam implementasi
 2. Mencegah placeholder, hardcode, dan solusi temporer
 3. Menjamin konsistensi kode di seluruh sistem
@@ -62,7 +65,7 @@ Jika aturan di dokumen ini dan baseline governance tampak bertentangan, hentikan
 
 ### 3.1 Layer Separation (WAJIB)
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │ Layer 1: Presentation (SolidJS Components)              │
 │ - HANYA UI logic, TIDAK ada business logic              │
@@ -98,22 +101,26 @@ Jika aturan di dokumen ini dan baseline governance tampak bertentangan, hentikan
 ### 3.2 Aturan Per Layer
 
 **Layer 1 (Components):**
+
 - ✅ Boleh: UI rendering, event handling, panggil hooks
 - ❌ Dilarang: Business logic, direct Supabase calls, state management kompleks
 - ❌ Dilarang: Inline styles (pakai Tailwind)
 - ❌ Dilarang: Magic strings (pakai constants)
 
 **Layer 2 (Hooks):**
+
 - ✅ Boleh: Query orchestration, optimistic updates, cache invalidation
 - ❌ Dilarang: Business logic, data transformation kompleks
 - ❌ Dilarang: Direct Supabase calls (harus via service)
 
 **Layer 3 (Services):**
+
 - ✅ Boleh: Business logic, validation, data transformation, error handling
 - ❌ Dilarang: UI logic, routing logic
 - ❌ Dilarang: Skip validation (Zod wajib)
 
 **Layer 4 (Database):**
+
 - ✅ Boleh: Constraints, RLS, triggers, RPC functions
 - ❌ Dilarang: Business logic di SQL (kecuali atomic operations)
 - ❌ Dilarang: Bypass RLS
@@ -159,6 +166,7 @@ CREATE POLICY "<description>" ON <table>
 ```
 
 **Aturan RLS:**
+
 - ✅ Gunakan `auth.uid()` untuk identifikasi user
 - ✅ Gunakan helper function `get_user_role(auth.uid())` untuk role check
 - ✅ Customer hanya bisa akses data sendiri (`customer_id = get_customer_id(auth.uid())`)
@@ -376,7 +384,7 @@ import { Button } from '@/components/ui/button';
 
 ### 8.1 Testing Pyramid
 
-```
+```text
         ╱╲
        ╱  ╲
       ╱ E2E╲        ← 10% (Critical paths)
@@ -536,6 +544,7 @@ await logAudit({
 ### 10.2 Actions yang Wajib Di-log
 
 Lihat daftar lengkap di PRD Section 7.2. Minimal:
+
 - LOGIN, LOGOUT
 - CREATE, UPDATE, DELETE untuk semua entity
 - State transitions
@@ -732,6 +741,7 @@ const CustomerList = () => {
 Sebelum menyelesaikan setiap modul, developer **WAJIB** memastikan:
 
 ### 14.1 Database
+
 - [ ] Schema created dengan naming conventions
 - [ ] Indexes untuk kolom yang sering di-query
 - [ ] Foreign keys dengan ON DELETE behavior
@@ -741,6 +751,7 @@ Sebelum menyelesaikan setiap modul, developer **WAJIB** memastikan:
 - [ ] Seed data untuk testing
 
 ### 14.2 Backend (Service Layer)
+
 - [ ] All functions implemented sesuai workflow di PRD
 - [ ] Zod validation untuk semua input/output
 - [ ] Error handling dengan error codes
@@ -750,6 +761,7 @@ Sebelum menyelesaikan setiap modul, developer **WAJIB** memastikan:
 - [ ] Edge cases handled sesuai PRD
 
 ### 14.3 Frontend (Components)
+
 - [ ] All pages implemented sesuai design
 - [ ] Loading states handled
 - [ ] Error states handled
@@ -761,6 +773,7 @@ Sebelum menyelesaikan setiap modul, developer **WAJIB** memastikan:
 - [ ] Accessibility (ARIA labels, keyboard navigation)
 
 ### 14.4 Testing
+
 - [ ] Unit tests untuk semua business rules (≥80% coverage)
 - [ ] Integration tests untuk semua workflows
 - [ ] E2E tests untuk critical paths
@@ -768,12 +781,14 @@ Sebelum menyelesaikan setiap modul, developer **WAJIB** memastikan:
 - [ ] No test skipped without reason
 
 ### 14.5 Documentation
+
 - [ ] JSDoc untuk semua functions
 - [ ] README untuk modul (jika kompleks)
 - [ ] API documentation updated
 - [ ] Changelog updated
 
 ### 14.6 Code Quality
+
 - [ ] No TypeScript errors
 - [ ] No linting errors
 - [ ] No placeholders
@@ -893,6 +908,7 @@ npx supabase start
 Sebelum menyelesaikan seluruh sistem, pastikan:
 
 ### 16.1 Functional Requirements
+
 - [ ] Semua modul diimplementasikan sesuai PRD
 - [ ] Semua workflow berfungsi sesuai spesifikasi
 - [ ] Semua edge cases ditangani
@@ -900,6 +916,7 @@ Sebelum menyelesaikan seluruh sistem, pastikan:
 - [ ] Semua state transitions mengikuti state machine
 
 ### 16.2 Non-Functional Requirements
+
 - [ ] Type-safe (no `any`)
 - [ ] Performance optimal (Lighthouse score ≥ 90)
 - [ ] Security (RLS tested, no vulnerabilities)
@@ -907,6 +924,7 @@ Sebelum menyelesaikan seluruh sistem, pastikan:
 - [ ] Responsive design (mobile, tablet, desktop)
 
 ### 16.3 Quality Requirements
+
 - [ ] Unit tests ≥80% coverage
 - [ ] Integration tests untuk semua workflows
 - [ ] E2E tests untuk critical paths
@@ -916,12 +934,14 @@ Sebelum menyelesaikan seluruh sistem, pastikan:
 - [ ] Code reviewed
 
 ### 16.4 Documentation Requirements
+
 - [ ] JSDoc untuk semua functions
 - [ ] README untuk setup & deployment
 - [ ] API documentation
 - [ ] Changelog
 
 ### 16.5 Deployment Requirements
+
 - [ ] Deployed to Vercel
 - [ ] Supabase configured
 - [ ] Environment variables set
@@ -960,6 +980,7 @@ Sebelum menyelesaikan seluruh sistem, pastikan:
 ### 18.2 Consequences
 
 Jika aturan di dokumen ini dilanggar:
+
 - ❌ Code review akan ditolak
 - ❌ PR tidak akan di-merge
 - ❌ Deployment akan di-hold
@@ -968,6 +989,7 @@ Jika aturan di dokumen ini dilanggar:
 ### 18.3 Success Criteria
 
 Sistem dianggap **SELESAI** jika:
+
 - ✅ Semua aturan di dokumen ini dipatuhi
 - ✅ Semua checklist di Phase 15 terpenuhi
 - ✅ Semua checklist di Phase 16 terpenuhi
@@ -979,6 +1001,7 @@ Sistem dianggap **SELESAI** jika:
 **Dokumen ini adalah konstitusi pengembangan Petora. Seluruh developer dan AI agent WAJIB mengikuti aturan di sini untuk memastikan kualitas, konsistensi, dan maintainability sistem.** 🚀
 
 **Dilarang keras:**
+
 - ❌ Placeholder
 - ❌ Hardcode
 - ❌ `any` types
@@ -987,6 +1010,7 @@ Sistem dianggap **SELESAI** jika:
 - ❌ Bypass RLS
 
 **Wajib:**
+
 - ✅ Type-safe
 - ✅ Contract-first
 - ✅ Test-driven
