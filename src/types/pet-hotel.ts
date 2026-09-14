@@ -1,4 +1,4 @@
-import type { UUID, Timestamp, DateString } from '../base';
+import type { UUID, Timestamp, DateString } from './base';
 
 export type RoomStatus = 'AVAILABLE' | 'RESERVED' | 'OCCUPIED' | 'MAINTENANCE' | 'INACTIVE';
 export type RoomCleanliness = 'CLEAN' | 'DIRTY' | 'UNDER_CLEANING';

@@ -1,4 +1,4 @@
-import type { UUID, Timestamp, DateString } from '../base';
+import type { UUID, Timestamp, DateString } from './base';
 
 export type PurchaseOrderStatus = 'DRAFT' | 'SENT' | 'PARTIAL_RECEIVED' | 'RECEIVED' | 'CANCELLED';
 

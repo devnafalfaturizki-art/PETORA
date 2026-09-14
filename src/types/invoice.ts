@@ -1,4 +1,4 @@
-import type { UUID, Timestamp } from '../base';
+import type { UUID, Timestamp } from './base';
 
 export type InvoiceType = 'POS' | 'CLINICAL' | 'PET_HOTEL' | 'GROOMING' | 'MIXED';
 export type InvoiceStatus = 'UNPAID' | 'PARTIAL_PAYMENT' | 'PAID' | 'CANCELLED';

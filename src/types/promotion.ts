@@ -1,4 +1,4 @@
-import type { UUID, Timestamp, DateString } from '../base';
+import type { UUID, Timestamp, DateString } from './base';
 
 export type PromotionType = 'PERCENTAGE' | 'FIXED' | 'BUNDLE' | 'HAPPY_HOUR' | 'BIRTHDAY';
 export type PromotionStatus = 'ACTIVE' | 'EXPIRED' | 'CANCELLED';

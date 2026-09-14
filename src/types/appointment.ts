@@ -1,4 +1,4 @@
-import type { UUID, Timestamp, DateString, TimeString } from '../base';
+import type { UUID, Timestamp, DateString, TimeString } from './base';
 
 export type AppointmentStatus = 'WAITING' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 

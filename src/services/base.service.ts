@@ -1,11 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { AppError, ErrorCode } from '@/lib/errors';
 import { logAudit } from '@/lib/audit';
-import type { UUID, AuditLog, CreateAuditLogInput } from '@/types';
+import type { AuditLog, CreateAuditLogInput } from '@/types';
 
-/**
- * Base service pattern yang harus diikuti semua domain service.
- */
 export abstract class BaseService {
   protected supabase = supabase;
 

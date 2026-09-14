@@ -1,4 +1,4 @@
-import type { UUID, Timestamp, DateString } from '../base';
+import type { UUID, Timestamp, DateString } from './base';
 
 export interface Pet {
   id: UUID;

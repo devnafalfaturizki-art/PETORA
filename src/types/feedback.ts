@@ -1,4 +1,4 @@
-import type { UUID, Timestamp } from '../base';
+import type { UUID, Timestamp } from './base';
 
 export type FeedbackRating = '1' | '2' | '3' | '4' | '5';
 

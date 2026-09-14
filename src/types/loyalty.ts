@@ -1,4 +1,4 @@
-import type { UUID, Timestamp } from '../base';
+import type { UUID, Timestamp } from './base';
 
 export type LoyaltyTierName = 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM';
 export type LoyaltyTransactionType = 'EARN' | 'REDEEM' | 'EXPIRE' | 'ADJUST';

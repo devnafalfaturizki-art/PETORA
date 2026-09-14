@@ -1,4 +1,4 @@
-import type { UUID, Timestamp } from '../base';
+import type { UUID, Timestamp } from './base';
 
 export type MedicalRecordStatus = 'OPEN' | 'CLOSED';
 
